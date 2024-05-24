@@ -52,14 +52,22 @@ criterion = torch.nn.CrossEntropyLoss()
 # 定义优化器为随机梯度下降（SGD），学习率为0.01，动量为0.5
 optimizer = optim.SGD(model.parameters(), lr=0.01, momentum=0.5)
 
+# 记录训练损失和准确率
+train_losses = []
+train_accuracies = []
+# 记录测试准确率
+test_accuracies = []
+
 
 # 模型训练
 def train(epoch):
+    model.train()  # 设置模型为训练模式
     running_loss = 0.0
-    for batch_idx, data in enumerate(train_loader, 0):
-        inputs, labels = data
+    correct_train = 0
+    total_train = 0
+    for batch_idx, (inputs, labels) in enumerate(train_loader):
         inputs, labels = inputs.to(device), labels.to(device)
-        # 梯度清零、前馈、反馈、更新
+
         optimizer.zero_grad()
         outputs = model(inputs)
         loss = criterion(outputs, labels)
@@ -67,40 +75,60 @@ def train(epoch):
         optimizer.step()
 
         running_loss += loss.item()
-        if batch_idx % 300 == 299:  # 300次迭代输出一次
-            print('[%d,%5d] loss:%.3f' % (epoch + 1, batch_idx + 1, running_loss / 300))
+
+        _, predicted = torch.max(outputs.data, 1)
+        correct_train += (predicted == labels).sum().item()
+        total_train += labels.size(0)
+
+        if batch_idx % 300 == 299:  # 每300次迭代输出一次
+            print('[%d, %5d] loss: %.3f' % (epoch + 1, batch_idx + 1, running_loss / 300))
             running_loss = 0.0
+
+    # 计算并记录训练准确率
+    train_accuracy = 100 * correct_train / total_train
+    train_accuracies.append(train_accuracy)
+    print('Train accuracy for epoch {}: {:.2f} %'.format(epoch + 1, train_accuracy))
 
 
 # 测试
-accuracy = []
-
-
 def test():
-    correct = 0
-    total = 0
-    with torch.no_grad():  # 无梯度
+    model.eval()  # 设置模型为评估模式
+    correct_test = 0
+    total_test = 0
+    with torch.no_grad():
         for data in test_loader:
             images, labels = data
             images, labels = images.to(device), labels.to(device)
 
             outputs = model(images)
-            _, predicted = torch.max(outputs.data, dim=1)  # _为每行最大值 predicted为最大值下标
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    print("Accuracy on test set:%s %%" % (100 * correct / total))
-    accuracy.append(100 * correct / total)
+            _, predicted = torch.max(outputs.data, 1)
+            total_test += labels.size(0)
+            correct_test += (predicted == labels).sum().item()
+
+    test_accuracy = 100 * correct_test / total_test
+    test_accuracies.append(test_accuracy)
+    print("Test accuracy: {:.2f} %".format(test_accuracy))
 
 
 if __name__ == '__main__':
     start = time.time()
-    for epoch in range(10):
+    epoch_num = 20
+    for epoch in range(epoch_num):
         train(epoch)
         test()
     end = time.time()
-    print('training time:', end - start)
-    print(accuracy)
-    plt.plot(range(10), accuracy)
-    plt.xlabel("epoch")
-    plt.ylabel("Accuracy")
+    print('Training time:', end - start)
+    plt.figure(figsize=(10, 5))  # 设置图像大小
+
+    # 绘制训练损失、训练准确率和测试准确率
+    # plt.plot(range(1, 11), train_losses, label='Train Loss', color='blue')
+    plt.plot(range(epoch_num), train_accuracies, label='Train Accuracy', color='orange')
+    plt.plot(range(epoch_num), test_accuracies, label='Test Accuracy', color='green')
+
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss / Accuracy")
+    plt.title("Training Loss, Training Accuracy, and Test Accuracy")
+    plt.legend()
+
+    plt.tight_layout()
     plt.show()
