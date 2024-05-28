@@ -1,6 +1,6 @@
-import torch
 import torch.nn.functional as F
-
+import torch
+import torch.nn as nn
 
 # 定义ResidualBlock块
 class ResidualBlock(torch.nn.Module):
@@ -16,7 +16,7 @@ class ResidualBlock(torch.nn.Module):
         return F.relu(x + y)
 
 
-# 卷积神经网络
+# 卷积神经网络——手写数字
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -38,4 +38,22 @@ class Net(torch.nn.Module):
 
         x = x.view(batch_size, -1)
         x = self.fc(x)
+        return x
+
+# CNN 模型——人脸识别
+class CNN(nn.Module):
+    def __init__(self):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.fc1 = nn.Linear(64 * 16 * 16, 128)
+        self.fc2 = nn.Linear(128, 40)
+
+    def forward(self, x):
+        x = self.pool(torch.relu(self.conv1(x)))
+        x = self.pool(torch.relu(self.conv2(x)))
+        x = x.view(-1, 64 * 16 * 16)  # 展平张量
+        x = torch.relu(self.fc1(x))
+        x = self.fc2(x)
         return x
